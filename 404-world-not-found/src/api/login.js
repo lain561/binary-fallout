@@ -1,7 +1,7 @@
 // src/api/login.js
 export const loginUser = async (username, password) => {
   try {
-    const response = await fetch('http://binaryfallout.co/api/login', {
+    const response = await fetch('http://localhost:5001/api/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ export const loginUser = async (username, password) => {
 
 export const registerUser = async (username, password) => {
   try {
-    const response = await fetch('http://binaryfallout.co/api/addUser', {
+    const response = await fetch('http://localhost:5001/api/addUser', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
