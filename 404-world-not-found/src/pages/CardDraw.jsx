@@ -16,7 +16,6 @@ const CardDraw = () => {
   const [isDrawing, setIsDrawing] = useState(false);
 
   useEffect(() => {
-    // Check if there's a saved card in localStorage
     const savedCard = localStorage.getItem('currentCard');
     if (savedCard) {
       setCard(JSON.parse(savedCard));

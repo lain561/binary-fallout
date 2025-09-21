@@ -16,7 +16,8 @@ app = Flask(__name__)
 CORS(app)
 
 jwt = JWTManager(app)
-app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this!
+app.config['JWT_SECRET_KEY'] = os.getenv("JWT_SECRET_KEY")
+
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -86,7 +87,7 @@ def login():
         "token": access_token
     }), 200
 
-@app.route("/generate", methods=["POST"])
+@app.route("/api/generate", methods=["POST"])
 def generate_content():
     data = request.json
     prompt = data.get("prompt", "")
@@ -122,7 +123,7 @@ def collect_card():
         rank=card_data["rank"], 
         suit=card_data["suit"]
     ).first()
-    
+
     if not card:
         # Create the card if it doesn't exist
         card = Card(
