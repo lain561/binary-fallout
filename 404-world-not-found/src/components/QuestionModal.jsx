@@ -51,7 +51,7 @@ const generateQuestionWithGemini = async (card) => {
 
 
   try {
-    const response = await fetch('http://binaryfallout.co/generate', {
+    const response = await fetch('http://localhost:5001/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
