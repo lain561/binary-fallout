@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import NavbarGame from '../components/NavbarGame';
+import NavbarPublic from '../components/NavbarPublic'; // Import the public navbar
+import QuizSetupModal from '../components/QuizModal';
+import GameControls from '../components/GameControls';
 import backgroundImage from '../images/mainframe.jpeg';
 
 const suits = {
@@ -14,16 +17,107 @@ const CardDraw = () => {
   const [card, setCard] = useState(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [showQuizSetup, setShowQuizSetup] = useState(false);
+  const [quizConfig, setQuizConfig] = useState(null);
+  const [hasConfiguredQuiz, setHasConfiguredQuiz] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Add login state
 
   useEffect(() => {
-    const savedCard = localStorage.getItem('currentCard');
+    // Check if user is logged in - replace this with your actual auth check
+    const checkAuthStatus = () => {
+      // Option 1: Check for auth token in localStorage
+      const token = localStorage.getItem('token');
+      console.log(token);
+      setIsLoggedIn(token);
+    };
+
+    checkAuthStatus();
+
+    const savedCard = localStorage.getItem('currentCrd');
+    const savedQuizConfig = localStorage.getItem('quizConfig');
+    
     if (savedCard) {
       setCard(JSON.parse(savedCard));
     }
+    
+    if (savedQuizConfig) {
+      const config = JSON.parse(savedQuizConfig);
+      setQuizConfig(config);
+      setHasConfiguredQuiz(true);
+      // Dispatch the quiz config for other components
+      document.dispatchEvent(new CustomEvent('quizConfigured', { detail: config }));
+    } else {
+      // Show quiz setup on first visit
+      setShowQuizSetup(true);
+    }
   }, []);
+
+  const handleQuizStart = (config) => {
+    setQuizConfig(config);
+    setHasConfiguredQuiz(true);
+    setShowQuizSetup(false);
+    
+    // Save to localStorage
+    localStorage.setItem('quizConfig', JSON.stringify(config));
+    
+    // Dispatch event for other components
+    document.dispatchEvent(new CustomEvent('quizConfigured', { detail: config }));
+    
+    console.log('Quiz configured:', config);
+  };
+
+  const handleGameReset = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("http://localhost:5001/api/cards/clear", {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Failed to reset collection:", data.error || data);
+      return;
+    }
+
+    console.log("Reset success:", data.message);
+
+    setCard(null);
+    setIsFlipped(false);
+    setQuizConfig(null);
+    setHasConfiguredQuiz(false);
+
+    localStorage.removeItem("currentCard");
+    localStorage.removeItem("quizConfig");
+
+    document.dispatchEvent(new CustomEvent("gameReset"));
+
+    setShowQuizSetup(true);
+
+    console.log("Game reset complete (frontend + backend)");
+  } catch (err) {
+    console.error("Error resetting game:", err);
+  }
+};
+
+
+  const handleConfigureQuiz = () => {
+    setShowQuizSetup(true);
+  };
 
   const drawCard = () => {
     if (isDrawing) return;
+    
+    // Check if quiz is configured before allowing card draw
+    if (!hasConfiguredQuiz) {
+      setShowQuizSetup(true);
+      return;
+    }
     
     setIsDrawing(true);
     setIsFlipped(false);
@@ -69,22 +163,62 @@ const CardDraw = () => {
 
       {/* Backdrop blur layer that covers the entire page */}
       <div className="absolute inset-0 backdrop-blur-xl brightness-90 z-0" />
+
+      {/* Quiz Setup Modal */}
+      <QuizSetupModal 
+        isVisible={showQuizSetup}
+        onClose={() => {
+          if (hasConfiguredQuiz) {
+            setShowQuizSetup(false);
+          }
+          // If no quiz configured yet, keep modal open
+        }}
+        onStartGame={handleQuizStart}
+      />
       
       {/* Content container */}
-      <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Navbar at the top */}
-        <NavbarGame />
+      <div className="relative z-10 flex flex-col min-h-screen items-center">
+        {/* Conditional Navbar rendering */}
+        {isLoggedIn ? <NavbarGame /> : <NavbarPublic />}
     
         {/* Main content centered below the navbar */}
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="mb-10 text-center">
-            <h2 className="text-[4rem] italic mb-6 font-semibold vhs-shift"
-            data-text="KNIGTHS MAINFRAME">KNIGTHS MAINFRAME</h2>
+          <div className="mb-8 text-center">
+            <h2 className="text-[4rem] italic font-semibold vhs-shift"
+            data-text="GAME ARENA">GAME ARENA</h2>
+  
+            
+            {/* Quiz Configuration Display */}
+            {quizConfig && (
+            <div className="m-4 mt-0 p-3 bg-green-900/70 border border-green-700 rounded-lg">
+              <div className="text-center text-sm">
+                <div className="text-green-300 font-semibold">ACTIVE PROTOCOL: {quizConfig.subject.toUpperCase()}</div>
+                <div className="opacity-70 text-xs mt-1">
+                  <span>Difficulty: {quizConfig.difficulty}</span>
+                  <span className="mx-2">•</span>
+                  <span>Topics: {quizConfig.topics.length > 60 ? `${quizConfig.topics.substring(0, 60)}...` : quizConfig.topics}</span>
+                </div>
+              </div>
+            </div>
+        )}
+
             <p className="text-md font-semibold text-shadow-xl max-w-xl mb-2 font-mono">
-              Draw a card to summon a challenge from the corrupted matrix. Correct answers repair the fractured code!
+              {hasConfiguredQuiz 
+                ? `Draw a card to summon a ${quizConfig?.subject} challenge from the corrupted matrix. Correct answers repair the world!`
+                : "Configure your quiz protocol to begin the simulation!"
+              }
             </p>
-          </div>
+          
+            {/* Game Controls - only show for logged in users */}
+            {hasConfiguredQuiz && isLoggedIn && (
+              <GameControls 
+                onResetGame={handleGameReset}
+                onConfigureQuiz={handleConfigureQuiz}
+              />
+            )}
     
+          </div>
+  
           <div className="relative w-64 h-96 mb-8">
             {card && (
               <motion.div 
@@ -117,8 +251,7 @@ const CardDraw = () => {
               style={{ backfaceVisibility: 'hidden', transformStyle: 'preserve-3d' }}
             >
               <div className="text-center relative z-10">
-                <div className="text-xl mb-4 font-mono">KNIGHTMARE DECK</div>
-                <div className="text-sm opacity-70">PROJECT: REGENESIS</div>
+                <div className="text-xl mb-4 font-mono">PROJECT: REGENESIS</div>
               </div>
     
               {/* Card back pattern */}
@@ -133,29 +266,44 @@ const CardDraw = () => {
           <div className="flex gap-4">
             <button 
               onClick={drawCard}
-              disabled={isDrawing}
+              disabled={isDrawing || !hasConfiguredQuiz}
               className="px-8 py-3 bg-green-900 hover:bg-green-700 text-green-300 
                         font-mono rounded border border-green-600 transition-all 
                         hover:shadow-lg hover:shadow-green-900/50 focus:outline-none
                         disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isDrawing ? 'Processing...' : 'Draw Card'}
+              {isDrawing ? 'Processing...' : !hasConfiguredQuiz ? 'Configure Quiz First' : 'Draw Card'}
             </button>
 
-            <a
-              href="/progress"
-              className="px-8 py-3 bg-green-900 hover:bg-green-700 text-green-300 
-                        font-mono rounded border border-green-600 transition-all 
-                        hover:shadow-lg hover:shadow-green-900/50 focus:outline-none
-                        flex items-center justify-center"
-            >
-              Inventory
-            </a>
+            {/* Only show Inventory link for logged in users */}
+            {isLoggedIn && (
+              <a
+                href="/progress"
+                className="px-8 py-3 bg-green-900 hover:bg-green-700 text-green-300 
+                          font-mono rounded border border-green-600 transition-all 
+                          hover:shadow-lg hover:shadow-green-900/50 focus:outline-none
+                          flex items-center justify-center"
+              >
+                Inventory
+              </a>
+            )}
           </div>
-    
+
           <div className="mt-4 text-sm font-mono font-semibold">
             {card ? `Last drawn: ${card.rank} ${suits[card.suit]}` : 'No cards drawn yet'}
           </div>
+
+          {/* Configuration status */}
+          {!hasConfiguredQuiz && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowQuizSetup(true)}
+                className="text-sm px-4 py-2 bg-blue-800 hover:bg-blue-700 text-blue-300 rounded border border-blue-600 transition-all"
+              >
+                Configure Quiz Protocol
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

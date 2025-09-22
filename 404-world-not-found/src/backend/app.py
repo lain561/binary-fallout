@@ -170,5 +170,22 @@ def get_collection():
     
     return jsonify({"collection": cards})
 
+@app.route("/api/cards/clear", methods=["DELETE"])
+@jwt_required()
+def clear_collection():
+    user_id = get_jwt_identity()
+    
+    # Find the user
+    user = User.objects(id=user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Delete all collection entries for this user
+    deleted_count = Collection.objects(user=user).delete()
+    
+    return jsonify({
+        "message": f"Deleted {deleted_count} card(s) from collection"
+    }), 200
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

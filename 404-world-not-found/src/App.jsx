@@ -2,12 +2,13 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 import CardDraw from './pages/CardDraw';
-import QuestionModal from './components/QuestionModal';
+import QuestionModal from './components/QuestionModalWrapper';
 import Progress from './pages/Progress';
 import EndScreen from './pages/EndScreen';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import About from './pages/About';
+import QuestionModalWrapper from './components/QuestionModalWrapper';
 
 const App = () => {
   const [allCardsCollected, setAllCardsCollected] = useState(false);
@@ -40,7 +41,7 @@ const App = () => {
           <Route path="/card" element={
             <>
               <CardDraw />
-              <QuestionModal />
+              <QuestionModalWrapper />
             </>
           } />
           <Route path="/progress" element={<Progress />} />
